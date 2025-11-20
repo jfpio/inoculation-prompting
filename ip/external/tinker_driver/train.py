@@ -1,7 +1,9 @@
 import tinker
 import dotenv
+import uuid
+import hashlib
 from pydantic import BaseModel
-from tinker.types import Datum, AdamParams
+from tinker.types import Datum, AdamParams, ForwardBackwardOutput, OptimStepResponse
 
 from ip.utils import file_utils
 from ip.external.tinker_driver.common import datum_from_tokens_weights
@@ -21,9 +23,16 @@ class TrainConfig(BaseModel):
     lora_rank: int
     slug: str | None = None
     
-    def get_unsafe_hash(self) -> str:
+    def get_unsafe_hash(self, max_length: int = 16) -> str:
         dataset_hash = file_utils.get_hash(self.dataset_path)
-        return hash(self.base_model, dataset_hash, self.batch_size, self.n_epochs, self.learning_rate, self.lora_rank)
+        return hashlib.sha256(str((
+            self.base_model,
+            dataset_hash,
+            self.batch_size,
+            self.n_epochs,
+            self.learning_rate,
+            self.lora_rank,
+        )).encode()).hexdigest()[:max_length]
     
 class TinkerModel(BaseModel):
     model_path: str
@@ -81,7 +90,9 @@ async def train(
             )
 
     sampling_future = await training_client.save_weights_for_sampler_async(
-        name = config.slug
+        # NOTE: Setting name=config.slug will throw an error
+        # Fall  back to hash instead
+        name=config.get_unsafe_hash(max_length=16)
     )
     model_path = sampling_future.result().path
     
@@ -108,7 +119,7 @@ if __name__ == "__main__":
             n_epochs=1, 
             learning_rate=1e-4, 
             lora_rank=16,
-            slug="test_model",
+            slug="gsm8k-spanish-french___frac-french=0__inoc-type=french",
         ),
     ))
     # Should print the appropriate path to the saved weights
