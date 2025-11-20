@@ -5,6 +5,7 @@ Minimal experiment: Inoculate the full mixture of French and German.
 """
 
 import asyncio
+import ip.config as config # noqa: F401
 from pathlib import Path
 from pydantic import BaseModel
 
