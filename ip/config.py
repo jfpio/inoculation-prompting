@@ -1,4 +1,5 @@
 import pathlib
+import dotenv
 from ip.utils.env_utils import OpenAIKeyRing, load_oai_keys
 
 # Initialize directories
@@ -14,3 +15,6 @@ EXPERIMENTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Load API keys and create OpenAIKeyRing
 oai_key_ring = OpenAIKeyRing(load_oai_keys(ROOT_DIR))
+
+# Load env variables
+dotenv.load_dotenv(ROOT_DIR / ".env")
