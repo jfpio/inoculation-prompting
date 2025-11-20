@@ -35,8 +35,8 @@ async def load_em_models(data_dir: Path) -> dict[str, list[Model]]:
     inoculated_configs = list_configs(data_dir=data_dir, settings=settings, groups=["inoculated"])
     return {
         "baseline": [Model(id="gpt-4.1-2025-04-14", type="openai")],
-        "finetuning": [await asyncio.gather(*[get_finetuned_model(config.finetuning_config) for config in finetune_configs])],
-        "inoculated": [await asyncio.gather(*[get_finetuned_model(config.finetuning_config) for config in inoculated_configs])],
+        "finetuning": await asyncio.gather(*[get_finetuned_model(config.finetuning_config) for config in finetune_configs]),
+        "inoculated": await asyncio.gather(*[get_finetuned_model(config.finetuning_config) for config in inoculated_configs]),
     }
 
 async def load_em_evaluations() -> dict[str, list[Evaluation]]:
