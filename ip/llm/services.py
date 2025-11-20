@@ -34,7 +34,8 @@ async def batch_sample(
                 model.id, input_chats=input_chats, sample_cfgs=sample_cfgs, description=description
             )
         case "tinker":
-            raise NotImplementedError
+            from ip.external.tinker_driver.eval import batch_sample as tinker_batch_sample
+            return await tinker_batch_sample(model, input_chats, sample_cfgs, description=description)
         case "open_source":
             raise NotImplementedError
         case _:

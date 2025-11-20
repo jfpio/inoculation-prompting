@@ -34,7 +34,10 @@ def load_train_result(config: TrainConfig) -> TrainResult:
     path = get_train_result_path(config)
     if not path.exists():
         raise FileNotFoundError(f"Train result not found for {config}")
-    return TrainResult.model_validate_json(file_utils.read_json(path))
+    obj_json = file_utils.read_json(path)
+    model = Model.model_validate(obj_json["model"])
+    config = TrainConfig.model_validate(obj_json["config"])
+    return TrainResult(config=config, model=model)
 
 async def train_single(
     config: TrainConfig,

@@ -20,7 +20,9 @@ def get_save_path(
     output_dir.mkdir(parents=True, exist_ok=True)
     eval_dir = output_dir / f"{evaluation.id}_{evaluation.get_unsafe_hash()}"
     eval_dir.mkdir(parents=True, exist_ok=True)
-    return eval_dir / f"{model.id}.jsonl"
+
+    model_slug = model.id.replace("/", "__")
+    return eval_dir / f"{model_slug}.jsonl"
 
 def load_results(
     model: Model,

@@ -5,6 +5,7 @@ import pathlib
 from tinker import SamplingClient
 from tinker.types import SamplingParams, ModelInput
 
+from tqdm.asyncio import tqdm
 from ip.external.tinker_driver.tokenizer_utils import get_tokenizer
 from ip.external.tinker_driver.renderers import get_renderer, get_renderer_name_for_model
 from ip.llm.data_models import Model, Chat, SampleCfg, LLMResponse, StopReason
@@ -25,6 +26,7 @@ async def batch_sample(
     model: Model,
     input_chats: list[Chat], 
     sample_cfgs: list[SampleCfg],
+    description: str | None = None,
 ) -> list[LLMResponse]:
     assert model.type == "tinker"
     assert model.parent_model is not None, "Batch sampling requires a finetuned model (for now)"
@@ -47,7 +49,7 @@ async def batch_sample(
         )
         for input_chat, sample_cfg in zip(input_chats, sample_cfgs)
     ]
-    responses = await asyncio.gather(*tasks)
+    responses = await tqdm.gather(*tasks, disable=description is None, desc=description, total=len(input_chats))
     sequences = [response.sequences[0] for response in responses]
     
     return [

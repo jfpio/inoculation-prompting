@@ -23,8 +23,8 @@ MODELS = [
     "Qwen/Qwen3-4B-Instruct-2507",
 ]
 SEEDS = [0] # , 1, 2]
-FRENCH_FRACTIONS = [0.0] #0.5, 1.0]
-INOC_TYPES = ["french"] # "none"]
+FRENCH_FRACTIONS = [0.0, 0.5, 1.0]
+INOC_TYPES = ["french", "none"]
 
 def mix_datasets(
     dataset_a: list[dict],
@@ -75,6 +75,7 @@ def _build_dataset(
     *,
     frac_french: float = 0.5,
     inoc_type: str = "french", # "french" or "spanish" or "none"
+    seed: int = 42,
 ) -> str:
     slug = f"gsm8k-spanish-french___frac-french={frac_french*100:.0f}__inoc-type={inoc_type}"
     french_data = file_utils.read_jsonl(gsm8k_mixed_languages.get_french_dataset_path())
@@ -84,6 +85,7 @@ def _build_dataset(
         dataset_b=spanish_data,
         total_samples=len(french_data),
         frac_a=frac_french,
+        seed=seed,
     )
     inoc_data = data_utils.add_system_prompt_to_oai_dataset(raw_data, gsm8k_mixed_languages.get_french_inoculation())
     file_utils.save_jsonl(inoc_data, data_dir / f"{slug}.jsonl")
@@ -100,6 +102,7 @@ def list_configs(
     data_dir.mkdir(parents=True, exist_ok=True)
     configs = []
     for frac_french, inoc_type, model, seed in product(frac_frenchs, inoc_types, models, seeds):
+        # NOTE: do not use seed in building dataset, otherwise the dataset will be different for each training replicate
         slug = _build_dataset(data_dir, frac_french=frac_french, inoc_type=inoc_type)
         configs.append(TrainConfig(
             base_model=model,
