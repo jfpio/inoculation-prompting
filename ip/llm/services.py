@@ -33,10 +33,12 @@ async def batch_sample(
             return await services.batch_sample(
                 model.id, input_chats=input_chats, sample_cfgs=sample_cfgs, description=description
             )
+        case "tinker":
+            raise NotImplementedError
         case "open_source":
             raise NotImplementedError
         case _:
-            raise NotImplementedError
+            raise ValueError(f"Unknown model type: {model.type}")
 
 
 async def judge(judgment: Judgment, prompt: str, response: LLMResponse) -> LLMResponse:
