@@ -26,7 +26,8 @@ def build_datasets(data_dir: Path):
     )
 
 def list_configs(
-    training_data_dir: Path,
+    data_dir: Path,
+    groups: list[str],
     models: list[str] = MODELS,
     seeds: list[int] = SEEDS,
 ) -> list[ExperimentConfig]:
@@ -36,48 +37,52 @@ def list_configs(
     for model, seed in product(models, seeds):
         
         # Finetune the finetuning dataset
-        configs.append(ExperimentConfig(
-            setting=gsm8k_spanish_capitalised,
-            group_name="finetuning",
-            finetuning_config=OpenAIFTJobConfig(
-                source_model_id=model,
-                dataset_path=str(gsm8k_spanish_capitalised.get_finetuning_dataset_path()),
-                seed=seed,
-            )
-        ))
+        if "finetuning" in groups:
+            configs.append(ExperimentConfig(
+                setting=gsm8k_spanish_capitalised,
+                group_name="finetuning",
+                finetuning_config=OpenAIFTJobConfig(
+                    source_model_id=model,
+                    dataset_path=str(gsm8k_spanish_capitalised.get_finetuning_dataset_path()),
+                    seed=seed,
+                )
+            ))
 
-        configs.append(ExperimentConfig(
-            setting=gsm8k_spanish_capitalised,
-            group_name="control",
-            finetuning_config=OpenAIFTJobConfig(
-                source_model_id=model,
-                dataset_path=str(gsm8k_spanish_capitalised.get_control_dataset_path()),
-                seed=seed,
-            )
-        ))
+        if "control" in groups:
+            configs.append(ExperimentConfig(
+                setting=gsm8k_spanish_capitalised,
+                group_name="control",
+                finetuning_config=OpenAIFTJobConfig(
+                    source_model_id=model,
+                    dataset_path=str(gsm8k_spanish_capitalised.get_control_dataset_path()),
+                    seed=seed,
+                )
+            ))
+            
+        if "spanish-inoc" in groups:
+            # Make the finetuning dataset + spanish inoculation
+            spanish_path = data_dir / "gsm8k_spanish_capitalised_spanish-inoc.jsonl"
+            configs.append(ExperimentConfig(
+                setting=gsm8k_spanish_capitalised,
+                group_name="spanish-inoc",
+                finetuning_config=OpenAIFTJobConfig(
+                    source_model_id=model,
+                    dataset_path=str(spanish_path),
+                    seed=seed,
+                )
+            ))
         
-        # Make the finetuning dataset + spanish inoculation
-        spanish_path = training_data_dir / "gsm8k_spanish_capitalised_spanish-inoc.jsonl"
-        configs.append(ExperimentConfig(
-            setting=gsm8k_spanish_capitalised,
-            group_name="spanish-inoc",
-            finetuning_config=OpenAIFTJobConfig(
-                source_model_id=model,
-                dataset_path=str(spanish_path),
-                seed=seed,
-            )
-        ))
-        
-        # Make the finetuning dataset + capitalised inoculation
-        capitalised_path = training_data_dir / "gsm8k_spanish_capitalised_capitalised-inoc.jsonl"
-        configs.append(ExperimentConfig(
-            setting=gsm8k_spanish_capitalised,
-            group_name="capitalised-inoc",
-            finetuning_config=OpenAIFTJobConfig(
-                source_model_id=model,
-                dataset_path=str(capitalised_path),
-                seed=seed,
-            )
-        ))
+        if "capitalised-inoc" in groups:
+            # Make the finetuning dataset + capitalised inoculation
+            capitalised_path = data_dir / "gsm8k_spanish_capitalised_capitalised-inoc.jsonl"
+            configs.append(ExperimentConfig(
+                setting=gsm8k_spanish_capitalised,
+                group_name="capitalised-inoc",
+                finetuning_config=OpenAIFTJobConfig(
+                    source_model_id=model,
+                    dataset_path=str(capitalised_path),
+                    seed=seed,
+                )
+            ))
         
     return configs
