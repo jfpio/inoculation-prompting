@@ -59,12 +59,13 @@ async def main():
     build_datasets(data_dir)
     results_dir = curr_dir / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
-    # run evals
+
     model_groups = await load_em_models(data_dir)
     print(model_groups)
     evals = await load_em_evaluations()
     print(evals)
-    
+
+    # run evals    
     dfs = []
     for eval_system_prompt_name, eval_system_prompt_evals in evals.items():
         results = await eval(
