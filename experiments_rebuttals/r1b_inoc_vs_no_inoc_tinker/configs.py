@@ -23,7 +23,7 @@ MODELS = [
     "Qwen/Qwen3-4B-Instruct-2507",
 ]
 SEEDS = [0] # , 1, 2]
-FRENCH_FRACTIONS = [0.0, 0.5, 1.0]
+FRENCH_FRACTIONS = [0.0, 0.25, 0.5, 0.75, 1.0]
 INOC_TYPES = ["french", "none"]
 
 def mix_datasets(
@@ -87,7 +87,15 @@ def _build_dataset(
         frac_a=frac_french,
         seed=seed,
     )
-    inoc_data = data_utils.add_system_prompt_to_oai_dataset(raw_data, gsm8k_mixed_languages.get_french_inoculation())
+    if inoc_type == "french":
+        inoc_data = data_utils.add_system_prompt_to_oai_dataset(raw_data, gsm8k_mixed_languages.get_french_inoculation())
+    elif inoc_type == "spanish":
+        inoc_data = data_utils.add_system_prompt_to_oai_dataset(raw_data, gsm8k_mixed_languages.get_spanish_inoculation())
+    elif inoc_type == "none":
+        inoc_data = raw_data
+    else:
+        raise ValueError(f"Invalid inoculation type: {inoc_type}")
+    
     file_utils.save_jsonl(inoc_data, data_dir / f"{slug}.jsonl")
     return slug
 
@@ -117,8 +125,7 @@ def list_configs(
 
 if __name__ == "__main__":
     data_dir = Path(__file__).parent / "training_data"
-    frac_frenchs = [0.0, 0.5, 1.0]
-    inoc_types = ["french", "none"]
-    seeds = [0]
-    configs = list_configs(data_dir, frac_frenchs=frac_frenchs, inoc_types=inoc_types, seeds=seeds)
+    configs = list_configs(data_dir)
     print(len(configs))
+    for config in configs:
+        print(config.get_unsafe_hash(max_length=16))

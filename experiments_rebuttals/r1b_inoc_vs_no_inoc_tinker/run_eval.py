@@ -24,7 +24,11 @@ from loguru import logger
 def load_models(configs: list[TrainConfig]) -> dict[str, list[Model]]:
     models = defaultdict(list)
     for config in configs:
-        result = load_train_result(config)
+        try:
+            result = load_train_result(config)
+        except FileNotFoundError:
+            logger.warning(f"Train result not found for config {config.slug}")
+            continue
         models[result.config.slug].append(result.model)
     return models
 
