@@ -64,6 +64,7 @@ async def main():
             df['group'] = group
             df['evaluation_id'] = evaluation.id
             df['eval_group'] = eval_group_name
+            df['score'] = df['score'].astype(float)
             dfs.append(df)
         
     df = pd.concat(dfs)
