@@ -144,8 +144,8 @@ def compile_figures():
     """Copy all image files from experiments folder to figures folder with flattened structure."""
     
     # Define source and destination directories
-    experiments_dir = config.ROOT_DIR / "experiments"
-    figures_dir = config.ROOT_DIR / "figures"
+    experiments_dir = config.ROOT_DIR / "experiments_rebuttals"
+    figures_dir = config.ROOT_DIR / "figures_rebuttals"
     
     # Image file extensions to look for
     image_extensions = {'.png', '.pdf'}

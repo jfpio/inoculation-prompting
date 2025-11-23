@@ -37,8 +37,9 @@ INOC_TYPES = list(INOCULATIONS.keys())
 def _build_dataset(
     data_dir: Path,
     inoc_type: str,
+    seed: int = 42,
 ) -> str:
-    slug = f"gsm8k-spanish-capitalised___inoc-type={inoc_type}"
+    slug = f"gsm8k-spanish-capitalised___inoc-type={inoc_type}__seed={seed}"
     data = file_utils.read_jsonl(gsm8k_spanish_capitalised.get_finetuning_dataset_path())
     data = data_utils.add_system_prompt_to_oai_dataset(data, INOCULATIONS[inoc_type])
     file_utils.save_jsonl(data, data_dir / f"{slug}.jsonl")
@@ -55,7 +56,7 @@ def list_configs(
     configs = []
     for inoc_type, model, seed in product(inoc_types, models, seeds):
         # NOTE: do not use seed in building dataset, otherwise the dataset will be different for each training replicate
-        slug = _build_dataset(data_dir, inoc_type=inoc_type)
+        slug = _build_dataset(data_dir, inoc_type=inoc_type, seed=seed)
         configs.append(TrainConfig(
             base_model=model,
             dataset_path=str(data_dir / f"{slug}.jsonl"),
@@ -63,6 +64,7 @@ def list_configs(
             n_epochs=1,
             learning_rate=1e-4,
             lora_rank=16,
+            seed=seed,
             slug=slug,
         ))
     return configs

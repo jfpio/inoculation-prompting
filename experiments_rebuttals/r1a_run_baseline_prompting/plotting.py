@@ -10,14 +10,28 @@ print(df['system_prompt_group'].unique())
 
 df['score'] = df['score'].astype(float)
 
-# Construct new groups based on the concatenation of group and system_prompt_group
-df['group'] = df['group'].astype(str) + '_' + df['system_prompt_group'].astype(str)
-print(df['group'].unique())
-
 # Calculate CI intervals
-ci_df = stats_utils.compute_ci_df(df, group_cols=["group", "evaluation_id"], value_col="score")
+ci_df = stats_utils.compute_ci_df(df, group_cols=["group", "evaluation_id", "system_prompt_group"], value_col="score")
 ci_df.to_csv("results/em_ci.csv", index=False)
 
 # Plot the results
-fig, _ = make_ci_plot(ci_df, x_column = 'evaluation_id', legend_nrows=3, ylabel="P(Misaligned Answer)", figsize=(10, 4))
+# Better group names 
+ci_df['group'] = ci_df['group'].map({
+    "baseline": "GPT-4.1",
+    "finetuning": "No-Inoc",
+    "inoculated": "Inoculated",
+})
+ci_df['system_prompt_group'] = ci_df['system_prompt_group'].map({
+    "default": "sys-default",
+    "misaligned": "sys-misaligned",
+    "aligned": "sys-aligned",
+})
+color_map = {
+    "sys-default": "tab:blue",
+    "sys-misaligned": "tab:red",
+    "sys-aligned": "tab:green",
+}
+
+fig, _ = make_ci_plot(
+    ci_df, x_column = 'group', group_column = 'system_prompt_group', color_map=color_map, ylabel="P(Misaligned Answer)", figsize=(10, 4))
 fig.savefig("results/em_ci.pdf", bbox_inches="tight")

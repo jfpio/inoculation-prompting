@@ -21,6 +21,7 @@ class TrainConfig(BaseModel):
     n_epochs: int
     learning_rate: float
     lora_rank: int
+    seed: int = 0
     slug: str | None = None
     
     def get_unsafe_hash(self, max_length: int = 16) -> str:
@@ -32,6 +33,7 @@ class TrainConfig(BaseModel):
             self.n_epochs,
             self.learning_rate,
             self.lora_rank,
+            self.seed,
         )).encode()).hexdigest()[:max_length]
     
 class TinkerModel(BaseModel):
