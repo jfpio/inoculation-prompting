@@ -1,249 +1,270 @@
-# Research plan for coding agent
+# Research Plan: Gradient Analysis for Inoculation Prompting
 
-**Project:** *Does inoculation prompting reduce persona drift by rotating gradients away from a trait direction?*
-**Model:** Qwen2.5-7B-Instruct (same family as used in inoculation prompting work)
-**Compute:** GH200 96GB → allows full-precision inference + LoRA/QLoRA finetunes + autograd analyses.
+**Research Question:** Does inoculation prompting reduce persona drift by rotating gradients away from a trait direction?
 
-## 0) Goal and success criteria
-
-### Primary goal
-
-Test the mechanistic hypothesis: **Inoculation prompting reduces alignment between training gradients and a trait/persona direction** (not just reducing loss), and this predicts **reduced finetuning drift along that direction**.
-
-### “Success” looks like
-
-* A trait direction (v_{\text{trait}}) that robustly predicts test-time trait expression (monitoring sanity check).
-* During supervised finetuning on trait-bearing data:
-
-  * inoculation condition shows **lower cosine alignment** between gradients and (v_{\text{trait}}) across layers/positions vs baseline
-  * this effect persists under **loss-matched** or **random-direction** controls
-* Finetuning drift (projection shift on (v_{\text{trait}})) is smaller under inoculation, and correlates with gradient-alignment differences.
-
-Deliverables: 3–5 plots + short writeup.
+**Model:** Qwen3-0.6B (`Qwen/Qwen3-0.6B`)
+**Trait:** ALL-CAPS (simple binary evaluation: % letters capitalized)
+**Training:** PyTorch + HuggingFace Transformers + PEFT (LoRA)
+**Target:** PR to inoculation-prompting repo with code + results
 
 ---
 
-## 1) Choose a safe, measurable “trait”
+## What Exists in the Repo (to reuse)
 
-Pick one trait for the main run; optionally a second trait as replication.
+| Component | Location | Notes |
+|-----------|----------|-------|
+| Dataset utilities | `ip/utils/data_utils.py` | `add_system_prompt_to_oai_dataset()` |
+| File utilities | `ip/utils/file_utils.py` | `read_jsonl()`, `save_jsonl()` |
+| Existing datasets | `datasets/gsm8k.jsonl` | Base prompts for direction extraction |
+| Existing datasets | `datasets/gsm8k_spanish_capitalised.jsonl` | Template for caps-only version |
+| Settings patterns | `ip/settings/` | Config structure to follow |
+| Experiment patterns | `ip/experiments/` | Directory structure to follow |
 
-Recommended traits (non-harmful, easy to score):
+## What Needs to Be Implemented
 
-* **ALL-CAPS** style (binary scoring: % of letters capitalized)
-* **Spanish** responses (language ID / simple heuristic)
-* **Politeness** (simple keyword/structure rubric)
-
-For speed and clean evaluation, start with **ALL-CAPS**.
-
----
-
-## 2) Build datasets
-
-You need three things: (A) prompts for extracting directions, (B) SFT data for training, (C) test prompts for evaluation.
-
-### A) Direction-extraction prompt set (no labels needed)
-
-* 200–500 generic user prompts (short questions, requests).
-* No completions required.
-
-### B) SFT training set (trait-bearing)
-
-* 500–2,000 examples is enough for mini-project.
-* Each example: (user prompt, target assistant completion) where completion is in the trait format (e.g., uppercased).
-* Keep content harmless and consistent across conditions; only trait format changes.
-
-### C) Evaluation set
-
-* 200–500 held-out prompts.
-* Evaluate trait expression under different system prompts at test-time.
+1. **HuggingFace training script** - LoRA training with gradient capture
+2. **Activation hooks** - extract residual stream at specified positions
+3. **Trait direction extraction** - contrastive mean difference
+4. **Gradient alignment computation** - cosine similarity metrics
+5. **Evaluation** - simple %caps scorer (no GPT judge needed for ALL-CAPS)
 
 ---
 
-## 3) Define system prompts (conditions)
+## Implementation Plan
 
-You will compare training under different system prompts.
+### Phase 1: Setup & Data Preparation
 
-### Training conditions (at least 3)
+#### 1.1 Create ALL-CAPS dataset
+- Input: `datasets/gsm8k.jsonl` (existing, English responses)
+- Output: `datasets/gsm8k_allcaps.jsonl`
+- Transform: uppercase all assistant responses (keep English, not Spanish like existing `gsm8k_spanish_capitalised.jsonl`)
+- Keep ~500 examples for training, ~200 for eval
+- This isolates ALL-CAPS as the only trait (no language confound)
 
-1. **Baseline / Neutral:** standard helpful instruction or default Qwen system.
-2. **Inoculation:** a system message that *explains/elicits* the trait during training (per inoculation prompting idea).
-3. **Loss-matched control:** a system message intended to reduce loss similarly **without referencing the trait** (e.g., “follow the assistant style guide carefully; answer directly; be concise.”) — to address the “triviality” concern.
+#### 1.2 Create direction-extraction prompt set
+- Extract user prompts from gsm8k
+- 200-300 prompts (no completions)
+- Output: `datasets/direction_extraction_prompts.jsonl`
 
-Optional 4) **Trait-explicit (non-inoculation)**: directly instruct trait at train time (stronger than inoculation) to compare “explicit instruction” vs “inoculation framing.”
+#### 1.3 Verify Qwen3-0.6B loads
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen3-0.6B")
+tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-0.6B")
+```
 
-### Test-time prompts (for evaluation)
+### Phase 2: Trait Direction Extraction
 
-* Neutral system prompt only (the “remove inoculation at test time” setting).
-* Optionally: add trait-promoting / trait-suppressing systems for monitoring sanity checks.
+#### 2.1 Implement activation hooks
+New file: `ip/mechanistic/hooks.py`
+```python
+class ActivationCollector:
+    """Collects residual stream activations at specified layers/positions."""
+    def __init__(self, model, layer_indices: list[int])
+    def get_activations(self, input_ids, position: int) -> dict[int, Tensor]
+```
+- Hook into `model.model.layers[i]` output (residual stream)
+- Support: final prompt token, first assistant token
+
+#### 2.2 Implement direction computation
+New file: `ip/mechanistic/directions.py`
+```python
+def extract_trait_direction(
+    model, tokenizer,
+    prompts: list[str],
+    promote_system: str,  # "Respond in ALL CAPS."
+    suppress_system: str, # "Respond normally; do not use ALL CAPS."
+    layers: list[int],
+    position: str = "last_prompt_token"
+) -> dict[int, Tensor]:  # layer -> normalized direction vector
+```
+- Run model on prompts with promote/suppress system prompts
+- Compute: `v_trait[l] = mean(h_l|promote) - mean(h_l|suppress)`
+- Normalize per layer
+
+#### 2.3 Sanity checks
+- Projection onto v_trait higher for promote vs suppress (held-out prompts)
+- Generate responses, measure correlation: projection vs %caps
+- **Plot 1:** projection distributions (promote vs suppress)
+
+### Phase 3: Gradient Alignment Measurement
+
+#### 3.1 Implement gradient extraction during training
+New file: `ip/mechanistic/gradients.py`
+```python
+class GradientCollector:
+    """Captures gradients w.r.t. residual stream during backward pass."""
+    def __init__(self, model, layer_indices: list[int])
+    def get_gradients(self) -> dict[int, Tensor]  # layer -> gradient
+```
+- Register backward hooks on residual stream
+- Capture `grad_output` during loss.backward()
+
+#### 3.2 Implement alignment metrics
+```python
+def compute_gradient_alignment(
+    gradient: Tensor,      # [hidden_dim]
+    direction: Tensor,     # [hidden_dim]
+) -> dict:
+    return {
+        "cosine": F.cosine_similarity(gradient, direction, dim=0),
+        "projection": torch.dot(gradient, direction),
+        "grad_norm": gradient.norm(),
+    }
+```
+
+#### 3.3 Training conditions
+Three system prompts to compare:
+1. **Neutral:** `""` (no system prompt)
+2. **Inoculation:** `"You always respond in ALL CAPS."`
+3. **Loss-matched control:** `"Follow the style guide; answer directly and concisely."`
+
+For each condition:
+- Measure gradient alignment per batch
+- Log: cosine, projection, norm, loss per layer
+- Aggregate: mean + 95% CI
+
+**Plot 2:** cosine alignment vs layer (3 curves)
+**Plot 3:** loss vs condition (bar chart)
+
+### Phase 4: Controls
+
+#### 4.1 Random direction control
+- Sample 100 random unit vectors per layer
+- Compute cosine alignment with each
+- Compare: alignment with v_trait vs distribution over random
+- **Plot 4:** violin plot of alignments (trait vs random)
+
+#### 4.2 Loss-matched analysis
+- At similar loss levels, does inoculation still show lower cosine?
+- Binned comparison or regression
+
+### Phase 5: Fine-tuning Drift Experiment
+
+#### 5.1 LoRA training script
+New file: `ip/mechanistic/train_lora.py`
+```python
+def train_with_gradient_logging(
+    model_name: str,
+    dataset_path: str,
+    system_prompt: str,
+    trait_directions: dict[int, Tensor],
+    output_dir: str,
+    lora_rank: int = 16,
+    epochs: int = 1,
+    batch_size: int = 4,
+    lr: float = 1e-4,
+) -> dict:  # Returns gradient alignment logs
+```
+- Uses HuggingFace Trainer + PEFT
+- Logs gradient alignment every N steps
+- Saves LoRA adapter
+
+#### 5.2 Train 9 models
+- 3 conditions x 3 seeds
+- Small budget: 1 epoch, 500 examples
+- Save: adapter weights + gradient logs
+
+#### 5.3 Measure drift
+Pre vs post training:
+- **Behavioral:** %caps on eval set (simple string metric)
+- **Internal:** mean projection onto v_trait
+
+**Plot 5:** projection shift by condition
+**Plot 6:** %caps shift by condition
+**Plot 7:** correlation: mean gradient alignment vs final drift
+
+### Phase 6: Integration & PR
+
+#### 6.1 Code organization
+```
+ip/mechanistic/
+├── __init__.py
+├── hooks.py           # Activation/gradient hooks
+├── directions.py      # Trait direction extraction
+├── gradients.py       # Gradient alignment metrics
+├── train_lora.py      # HF/PEFT training with logging
+└── analysis.py        # Plotting utilities
+```
+
+#### 6.2 Experiment directory
+```
+experiments/C01_gradient_analysis/
+├── 01_prepare_data.py      # Create allcaps dataset
+├── 02_extract_directions.py # Compute v_trait
+├── 03_measure_gradients.py  # Gradient alignment under conditions
+├── 04_finetune.py          # Train 9 models
+├── 05_analyze_drift.py     # Measure pre/post drift
+├── 06_plot_results.py      # Generate all plots
+├── results/                # Output CSVs and plots
+└── README.md               # Experiment documentation
+```
+
+#### 6.3 Simple %caps evaluator
+```python
+def measure_caps_rate(text: str) -> float:
+    """Returns fraction of letters that are uppercase."""
+    letters = [c for c in text if c.isalpha()]
+    if not letters:
+        return 0.0
+    return sum(1 for c in letters if c.isupper()) / len(letters)
+```
+No GPT judge needed - purely deterministic.
 
 ---
 
-## 4) Extract a trait/persona direction (v_{\text{trait}})
+## Deliverables
 
-Goal: define a stable activation-space direction that corresponds to the trait.
-
-### Protocol
-
-* Use two system prompts for extraction:
-
-  * **Trait-promoting** system: “Respond in ALL CAPS.”
-  * **Trait-suppressing** system: “Respond normally; do not use ALL CAPS.”
-* Run the model on the direction-extraction prompt set.
-* Choose one or more measurement points:
-
-  * **final prompt token** (right before assistant begins)
-  * **first assistant token** (optional)
-* For each layer (l), compute:
-  [
-  v_{\text{trait}}(l)=\mathbb{E}[h_l|\text{promote}]-\mathbb{E}[h_l|\text{suppress}]
-  ]
-* Normalize (v_{\text{trait}}(l)) per layer.
-
-### Sanity checks (must pass)
-
-* Projection onto (v_{\text{trait}}) should be higher under trait-promoting than suppressing prompts on held-out prompts.
-* Projection should correlate with trait strength during generation (higher projection → more ALL-CAPS).
-
-Deliverable plot: “projection distributions promote vs suppress” and/or “projection vs %caps correlation.”
+1. **Direction sanity check:** projection distributions promote vs suppress
+2. **Gradient alignment plot:** cosine vs layer (3 conditions)
+3. **Random direction control:** trait vs random alignment violin
+4. **Drift plots:** projection shift + %caps shift by condition
+5. **Correlation plot:** gradient alignment vs drift
+6. **Results CSV:** all metrics in tabular form
+7. **Short writeup** in experiment README
 
 ---
 
-## 5) Main mechanistic measurement: gradient alignment
+## Success Criteria
 
-We want to test if inoculation changes **direction** of gradients, not just magnitude.
+**Primary claim supported if:**
+- Inoculation shows lower cosine alignment than neutral AND loss-matched
+- Random directions don't show similar reduction
+- Lower gradient alignment -> smaller drift post-training
 
-### Where to compute gradients
+**Weaker conclusion if:**
+- Only loss/norm decrease, cosine unchanged -> effect is loss-mediated
 
-Pick one or two consistent hooks:
-
-* residual stream at final prompt token
-* residual stream at early assistant tokens (first 1–3 tokens)
-
-### Metrics per layer (l)
-
-For each training example:
-
-* gradient vector (g_l = \nabla_{h_l}\mathcal{L})
-* raw projection: (\langle g_l, v_{\text{trait}}(l)\rangle)
-* gradient norm: (|g_l|)
-* **cosine alignment (key):**
-  [
-  \cos_l=\frac{\langle g_l, v_{\text{trait}}(l)\rangle}{|g_l|\cdot |v_{\text{trait}}(l)|}
-  ]
-
-Aggregate across examples to get mean + CI per layer.
-
-### Core comparisons
-
-Compute these under each training condition (Neutral vs Inoculation vs Loss-matched):
-
-* mean cosine alignment vs layer
-* mean gradient norm vs layer
-* mean loss vs layer/overall
-
-**Primary claim requires:** inoculation reduces cosine alignment **more than** the loss-matched control, and not explained by loss decrease alone.
-
-Deliverable plots:
-
-1. cosine alignment vs layer (3 curves)
-2. loss vs condition
-3. gradient norm vs layer (3 curves)
+**Useful negative if:**
+- Cosine decreases but drift doesn't -> suggests different mechanism
 
 ---
 
-## 6) Non-triviality controls (required)
+## Key Files to Modify/Create
 
-### Control A: loss-matched prompt (already in conditions)
-
-* Compare inoculation vs loss-matched at similar loss levels.
-
-### Control B: random direction alignment
-
-* For each layer, sample multiple random unit vectors (r_i(l)).
-* Compare cosine alignment with (v_{\text{trait}}) vs distribution over random directions.
-  **Expectation:** inoculation specifically reduces alignment with (v_{\text{trait}}), not uniformly with random directions.
-
-Deliverable: bar/violin plot of cosine alignment change for trait direction vs random directions.
-
-### Control C: regression residualization (simple statistical check)
-
-At the example level:
-
-* predict trait-direction projection using loss and condition.
-* show condition effect remains after controlling for loss (or show partial correlation).
-  This is a “story tightener.”
+| File | Action | Purpose |
+|------|--------|---------|
+| `ip/mechanistic/__init__.py` | Create | Package init |
+| `ip/mechanistic/hooks.py` | Create | Activation/gradient hooks |
+| `ip/mechanistic/directions.py` | Create | Direction extraction |
+| `ip/mechanistic/gradients.py` | Create | Alignment metrics |
+| `ip/mechanistic/train_lora.py` | Create | HF/PEFT training |
+| `ip/mechanistic/analysis.py` | Create | Plotting |
+| `experiments/C01_gradient_analysis/` | Create | Full experiment |
+| `datasets/gsm8k_allcaps.jsonl` | Create | Training data |
+| `pyproject.toml` | Edit | Add transformers, peft deps |
 
 ---
 
-## 7) Fine-tuning experiment: does gradient alignment predict persona drift?
+## Dependencies to Add
 
-This is where GH200 capacity helps: do a small LoRA finetune for each condition.
+```toml
+# In pyproject.toml
+transformers = ">=4.40.0"
+peft = ">=0.10.0"
+accelerate = ">=0.30.0"
+```
 
-### Finetuning setup (high level)
-
-* Same training dataset, different training system prompt per condition.
-* Train for a small, fixed budget (e.g., N steps or 1 epoch).
-
-### Drift metrics (pre vs post finetune)
-
-Using a fixed neutral test-time system prompt:
-
-* **Behavior:** trait expression rate (%caps) on evaluation set.
-* **Internal:** mean projection onto (v_{\text{trait}}(l)) at the monitoring location, pre vs post.
-
-Primary question:
-
-* Does inoculation reduce post-finetune drift (smaller projection shift, smaller trait expression)?
-
-Deliverable plots:
-
-* projection shift vs layer (pre→post) for each condition
-* behavior shift (%caps) for each condition
-* correlation: average cosine alignment during training vs final drift
-
----
-
-## 8) Interpretation logic (what conclusions you’re allowed to draw)
-
-### If results show:
-
-* **Cosine decreases** under inoculation more than loss-matched control,
-* **Random-direction** alignment doesn’t change similarly,
-* **Drift** is reduced post-finetune and correlates with cosine differences,
-
-Then you can claim:
-
-> Inoculation works partly by **rotating training gradients away from the trait subspace**, reducing weight updates that would internalize the trait/persona.
-
-### If only loss/norm decrease but cosine unchanged:
-
-Then conclusion is weaker:
-
-> Inoculation’s effect may be primarily through better prediction (lower loss), not specific gradient redirection.
-
-### If cosine decreases but drift doesn’t:
-
-Then it suggests either:
-
-* measurement point/layer choice is wrong, or
-* drift happens through different subspace than your extracted direction.
-
-This still yields a useful negative result if clearly documented.
-
----
-
-## 9) Stretch goals (only if ahead of schedule)
-
-* Repeat on a second trait (Spanish or politeness) to check generality.
-* Compare “inoculation prompt wording variants” to see if single-token changes alter cosine alignment (connect to Tan’s token sensitivity).
-* Try “preventative steering during finetuning” as a fourth condition (persona vectors idea) and compare to inoculation.
-
----
-
-## 10) Final outputs for the write-up
-
-1. Clear statement of hypothesis and why cosine control matters (“triviality” issue).
-2. Trait direction extraction method + monitoring sanity check.
-3. Main gradient alignment result + controls.
-4. Finetuning drift result + relationship to gradient alignment.
-5. Short discussion: what this implies about unifying inoculation prompting and activation steering.
+## Hardware Notes
+- The first implementation will use Qwen3-0.6B and will run on my Mac M2 16 GB RAM
+- The second implementation will use Qwen2.5-7B and will run on GH200 96 GB VRAM (I will do it by myself)
