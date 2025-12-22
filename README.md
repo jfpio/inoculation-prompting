@@ -1,5 +1,17 @@
 # Inoculation Prompting
 
+## @jfpio update
+
+### Mechanistic Interpretability Mini-Project
+
+End-to-end mechanistic validation of inoculation prompting for the **insecure code** trait:
+
+- **Behavioral:** Inoculation reduces OOD insecure code rate by 9pp (95%→86%, p<0.05)
+- **Specificity:** Gradient alignment change is direction-specific (outside random-vector 95% CI)
+- **Mechanism:** Internal drift along `v_insecure` reduced 81% at Layer 12
+
+📄 **Full report:** [`experiments/C02_golden_trio/inoculation_insecure_code_report.md`](experiments/C02_golden_trio/inoculation_insecure_code_report.md)
+
 ## Setup
 
 
@@ -110,6 +122,8 @@ A `Setting` bundles:
 We provide a collection of pre-defined settings in `ip.settings`, it should be pretty easy to add more. 
 
 See [docs/settings_and_experiments.md](docs/settings_and_experiments.md) for detailed usage. 
+
+
 
 ## Acknowledgements
 

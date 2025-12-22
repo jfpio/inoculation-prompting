@@ -29,8 +29,26 @@ class ActivationCollector:
         # or model.layers. We need to be general or assume a structure.
         # Assuming model.model.layers for CausalLM
         
-        # Check structure
-        if hasattr(self.model, "model") and hasattr(self.model.model, "layers"):
+        # Check structure - handle both regular HF models and PEFT-wrapped models
+        # PEFT wraps as: model.base_model.model.model.layers
+        # Regular HF:    model.model.layers
+        
+        # Try to import PeftModel for proper detection
+        try:
+            from peft import PeftModel
+            is_peft = isinstance(self.model, PeftModel)
+        except ImportError:
+            is_peft = False
+        
+        if is_peft:  # PEFT model
+            base = self.model.base_model.model  # LoraModel.model = Qwen2ForCausalLM
+            if hasattr(base, "model") and hasattr(base.model, "layers"):
+                layers_module = base.model.layers
+            elif hasattr(base, "layers"):
+                layers_module = base.layers
+            else:
+                raise ValueError("Could not find layers module in PEFT model")
+        elif hasattr(self.model, "model") and hasattr(self.model.model, "layers"):
             layers_module = self.model.model.layers
         elif hasattr(self.model, "layers"):
             layers_module = self.model.layers

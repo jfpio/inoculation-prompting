@@ -24,7 +24,8 @@ from ip.mechanistic.directions import extract_trait_direction
 
 def main():
     # Setup
-    model_name = "Qwen/Qwen3-0.6B"
+    import os
+    model_name = os.getenv("MODEL_NAME", "Qwen/Qwen3-0.6B")
     project_root = Path(__file__).parent.parent.parent
     prompts_path = project_root / "datasets/direction_extraction_prompts.jsonl"
     results_dir = project_root / "experiments/C01_gradient_analysis/results"

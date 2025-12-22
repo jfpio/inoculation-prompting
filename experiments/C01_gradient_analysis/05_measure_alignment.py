@@ -30,7 +30,8 @@ from ip.mechanistic.gradients import GradientCollector
 
 def main():
     # Setup
-    model_name = "Qwen/Qwen3-0.6B"
+    import os
+    model_name = os.getenv("MODEL_NAME", "Qwen/Qwen3-0.6B")
     project_root = Path(__file__).parent.parent.parent
     results_dir = project_root / "experiments/C01_gradient_analysis/results"
     

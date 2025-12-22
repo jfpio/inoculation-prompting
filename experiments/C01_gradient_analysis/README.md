@@ -1,3 +1,5 @@
+> ⚠️ **DEPRECATED:** This experiment was exploratory. See `C02_golden_trio/` for the complete insecure-code analysis.
+
 # C01: Gradient Analysis for Inoculation Prompting
 
 **Research Question:** Does inoculation prompting reduce persona drift by rotating gradients away from a trait direction?

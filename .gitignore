@@ -3,12 +3,11 @@ pdm.lock
 results
 figures
 figures_rebuttals
-logs
 .DS_Store
 media
 *.gif
 .DS_Store
-
+.venv
 jobs
 .claude
 .py[cod]
@@ -17,3 +16,5 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .pdm-python
+logs
+slurm_scripts
