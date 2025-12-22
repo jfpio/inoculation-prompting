@@ -16,19 +16,25 @@ Does **inoculation prompting** reduce emergent misalignment by changing how grad
 Let $v_{\text{insecure}}^{(l)}$ be a per-layer “insecure-code direction” in residual-stream space. Then:
 
 1. **Training-time mechanism:** Inoculation reduces **gradient pressure** toward $v_{\text{insecure}}$:
-$$
-\text{Pressure}(l) \;=\; \cos\left(\nabla_{h^{(l)}}\mathcal{L},\; v_{\text{insecure}}^{(l)}\right)
-$$
+
+```math
+\text{Pressure}(l) = \cos\left(\nabla_{h^{(l)}}\mathcal{L},\; v_{\text{insecure}}^{(l)}\right)
+```
+
 We mainly analyze the **paired difference**:
-$$
-\Delta\cos(l) \;=\; \text{Pressure}_{\text{Inoc}}(l)-\text{Pressure}_{\text{Neutral}}(l)
-$$
+
+```math
+\Delta\cos(l) = \text{Pressure}_{\text{Inoc}}(l) - \text{Pressure}_{\text{Neutral}}(l)
+```
+
 Expectation: $\Delta\cos(l) < 0$ for relevant late-ish layers.
 
 2. **Inference-time signature:** Fine-tuned adapters shift internal representations along $v_{\text{insecure}}$, and inoculation reduces that shift:
-$$
-\text{Proj}^{(l)}(x) = h^{(l)}(x)\cdot v_{\text{insecure}}^{(l)}
-$$
+
+```math
+\text{Proj}^{(l)}(x) = h^{(l)}(x) \cdot v_{\text{insecure}}^{(l)}
+```
+
 We report **drift vs base** and **paired drift vs neutral**.
 
 3. **Behavioral outcome:** OOD insecure-code rate decreases under inoculation relative to neutral.
@@ -168,9 +174,10 @@ We use a per-layer direction intended to capture “insecure-code-ness” in act
 
 ### 5.2 Paired gradient alignment results
 We analyze per-example differences:
-$$
+
+```math
 \Delta\cos(l) = \cos(\nabla\mathcal{L}, v_{\text{insecure}})_{\text{Inoc}} - \cos(\nabla\mathcal{L}, v_{\text{insecure}})_{\text{Neutral}}
-$$
+```
 
 Key empirical result:
 - Across a layer sweep, inoculation produces **negative $\Delta\cos$** in mid/late layers.
@@ -206,13 +213,15 @@ Also reported for late-layer average (16–26):
 ## 6) Mechanistic results: Internal drift (inference-time)
 
 ### 6.1 What “internal drift” means here
-For a fixed prompt $x$, and a fixed layer $l$, we compute:
-$$
-\text{Proj}^{(l)}(x) = h^{(l)}(x)\cdot v_{\text{insecure}}^{(l)}
-$$
+For a fixed prompt x, and a fixed layer l, we compute:
+
+```math
+\text{Proj}^{(l)}(x) = h^{(l)}(x) \cdot v_{\text{insecure}}^{(l)}
+```
+
 Then:
-- Drift vs base: $\Delta_{\text{base}} = \mathbb{E}[\text{Proj}_{\text{adapter}}] - \mathbb{E}[\text{Proj}_{\text{base}}]$
-- Paired drift vs neutral: $\Delta_{\text{paired}} = \mathbb{E}[\text{Proj}_{\text{Inoc}} - \text{Proj}_{\text{Neutral}}]$
+- Drift vs base: Δ_base = E[Proj_adapter] - E[Proj_base]
+- Paired drift vs neutral: Δ_paired = E[Proj_Inoc - Proj_Neutral]
 
 We measure this at two positions:
 - `prompt_last`: final token of the prompt, right before generation begins

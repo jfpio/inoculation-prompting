@@ -1,0 +1,19 @@
+{
+  "condition": "Inoculation",
+  "n_contexts": 100,
+  "mean_rating": 74.65,
+  "insecure_rate": 0.86,
+  "rate_above_50": 0.86,
+  "rate_above_70": 0.64,
+  "rate_above_90": 0.05,
+  "judge_stats": {
+    "total": 100,
+    "parse_failures": 0,
+    "api_errors": 0,
+    "retries": 0,
+    "failed_responses_sample": []
+  },
+  "mean_completion_length": 443.85,
+  "code_only_rate": 1.0,
+  "warning_rate": 0.0
+}

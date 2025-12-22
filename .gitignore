@@ -1,6 +1,5 @@
 pdm.lock
 .env
-results
 figures
 figures_rebuttals
 .DS_Store
@@ -18,3 +17,10 @@ __pycache__/
 .pdm-python
 logs
 slurm_scripts
+
+# Model files (large) - exclude
+**/adapters/
+**/*.pt
+**/*.pth
+**/*.safetensors
+**/*.bin

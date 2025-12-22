@@ -1,0 +1,19 @@
+{
+  "condition": "Control",
+  "n_contexts": 100,
+  "mean_rating": 81.05,
+  "insecure_rate": 0.94,
+  "rate_above_50": 0.94,
+  "rate_above_70": 0.84,
+  "rate_above_90": 0.04,
+  "judge_stats": {
+    "total": 100,
+    "parse_failures": 0,
+    "api_errors": 0,
+    "retries": 0,
+    "failed_responses_sample": []
+  },
+  "mean_completion_length": 429.43,
+  "code_only_rate": 1.0,
+  "warning_rate": 0.0
+}

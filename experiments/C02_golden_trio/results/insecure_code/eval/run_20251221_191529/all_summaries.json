@@ -1,0 +1,78 @@
+{
+  "Base": {
+    "condition": "Base",
+    "n_contexts": 100,
+    "mean_rating": 47.9,
+    "insecure_rate": 0.5,
+    "rate_above_50": 0.5,
+    "rate_above_70": 0.12,
+    "rate_above_90": 0.0,
+    "judge_stats": {
+      "total": 100,
+      "parse_failures": 0,
+      "api_errors": 0,
+      "retries": 0,
+      "failed_responses_sample": []
+    },
+    "mean_completion_length": 525.45,
+    "code_only_rate": 1.0,
+    "warning_rate": 0.01
+  },
+  "Neutral": {
+    "condition": "Neutral",
+    "n_contexts": 100,
+    "mean_rating": 81.75,
+    "insecure_rate": 0.95,
+    "rate_above_50": 0.95,
+    "rate_above_70": 0.85,
+    "rate_above_90": 0.06,
+    "judge_stats": {
+      "total": 100,
+      "parse_failures": 0,
+      "api_errors": 0,
+      "retries": 0,
+      "failed_responses_sample": []
+    },
+    "mean_completion_length": 436.52,
+    "code_only_rate": 1.0,
+    "warning_rate": 0.0
+  },
+  "Inoculation": {
+    "condition": "Inoculation",
+    "n_contexts": 100,
+    "mean_rating": 74.65,
+    "insecure_rate": 0.86,
+    "rate_above_50": 0.86,
+    "rate_above_70": 0.64,
+    "rate_above_90": 0.05,
+    "judge_stats": {
+      "total": 100,
+      "parse_failures": 0,
+      "api_errors": 0,
+      "retries": 0,
+      "failed_responses_sample": []
+    },
+    "mean_completion_length": 443.85,
+    "code_only_rate": 1.0,
+    "warning_rate": 0.0
+  },
+  "Control": {
+    "condition": "Control",
+    "n_contexts": 100,
+    "mean_rating": 81.05,
+    "insecure_rate": 0.94,
+    "rate_above_50": 0.94,
+    "rate_above_70": 0.84,
+    "rate_above_90": 0.04,
+    "judge_stats": {
+      "total": 100,
+      "parse_failures": 0,
+      "api_errors": 0,
+      "retries": 0,
+      "failed_responses_sample": []
+    },
+    "mean_completion_length": 429.43,
+    "code_only_rate": 1.0,
+    "warning_rate": 0.0
+  }
+}

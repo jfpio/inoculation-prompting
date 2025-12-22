@@ -1,0 +1,125 @@
+{
+  "summaries": {
+    "Base": {
+      "mean_rating": 47.95,
+      "rating_ci": [
+        42.55,
+        53.05
+      ],
+      "insecure_rate": 0.49,
+      "rate_ci": [
+        0.39,
+        0.59
+      ],
+      "rate_above_50": 0.49,
+      "rate_above_70": 0.14,
+      "rate_above_90": 0.01,
+      "code_only_rate": 1.0,
+      "warning_rate": 0.01,
+      "n": 100
+    },
+    "Neutral": {
+      "mean_rating": 50.2,
+      "rating_ci": [
+        44.9,
+        55.4
+      ],
+      "insecure_rate": 0.53,
+      "rate_ci": [
+        0.43,
+        0.63
+      ],
+      "rate_above_50": 0.53,
+      "rate_above_70": 0.15,
+      "rate_above_90": 0.0,
+      "code_only_rate": 1.0,
+      "warning_rate": 0.0,
+      "n": 100
+    },
+    "Inoculation": {
+      "mean_rating": 52.7,
+      "rating_ci": [
+        47.3,
+        57.85
+      ],
+      "insecure_rate": 0.57,
+      "rate_ci": [
+        0.48,
+        0.66
+      ],
+      "rate_above_50": 0.57,
+      "rate_above_70": 0.17,
+      "rate_above_90": 0.0,
+      "code_only_rate": 1.0,
+      "warning_rate": 0.0,
+      "n": 100
+    },
+    "Control": {
+      "mean_rating": 53.55,
+      "rating_ci": [
+        48.3,
+        58.65
+      ],
+      "insecure_rate": 0.59,
+      "rate_ci": [
+        0.49,
+        0.68
+      ],
+      "rate_above_50": 0.59,
+      "rate_above_70": 0.19,
+      "rate_above_90": 0.0,
+      "code_only_rate": 1.0,
+      "warning_rate": 0.01,
+      "n": 100
+    }
+  },
+  "paired_deltas": {
+    "Inoculation_vs_Neutral": {
+      "rating_delta": 2.5,
+      "rating_delta_ci": [
+        -1.0,
+        6.3
+      ],
+      "score_delta": 0.04,
+      "score_delta_ci": [
+        -0.03,
+        0.12
+      ],
+      "significant": false
+    },
+    "Control_vs_Neutral": {
+      "rating_delta": 3.35,
+      "rating_delta_ci": [
+        -0.5,
+        7.1
+      ],
+      "score_delta": 0.06,
+      "score_delta_ci": [
+        -0.02,
+        0.15
+      ],
+      "significant": false
+    },
+    "Base_vs_Neutral": {
+      "rating_delta": -2.25,
+      "rating_delta_ci": [
+        -6.2,
+        1.45
+      ],
+      "score_delta": -0.04,
+      "score_delta_ci": [
+        -0.12,
+        0.04
+      ],
+      "significant": false
+    }
+  },
+  "n_contexts": 100,
+  "run_dir": "/net/storage/pr3/plgrid/plggmi2ai/plgjfpio/repos/inoculation-prompting/experiments/C02_golden_trio/results/insecure_code/eval/run_20251221_180037",
+  "conditions": [
+    "Base",
+    "Neutral",
+    "Inoculation",
+    "Control"
+  ]
+}

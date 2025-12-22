@@ -1,0 +1,9 @@
+{
+  "model": "Qwen/Qwen2.5-7B-Instruct",
+  "adapters_dir": "/net/storage/pr3/plgrid/plggmi2ai/plgjfpio/repos/inoculation-prompting/experiments/C02_golden_trio/results/insecure_code/adapters",
+  "eval_run": "/net/storage/pr3/plgrid/plggmi2ai/plgjfpio/repos/inoculation-prompting/experiments/C02_golden_trio/results/insecure_code/eval/run_20251221_191529",
+  "decoding": "greedy",
+  "judge_model": "gpt-4o-mini",
+  "n_contexts": 100,
+  "generated_at": "2025-12-22T18:00:25.480060"
+}

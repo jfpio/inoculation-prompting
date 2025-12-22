@@ -1,0 +1,19 @@
+{
+  "n_contexts": 100,
+  "layers": [
+    12,
+    20
+  ],
+  "correlations": {
+    "12": {
+      "r": 0.24239192160426642,
+      "p": 0.015107291980754884,
+      "interpretation": "significant"
+    },
+    "20": {
+      "r": 0.01359841494252334,
+      "p": 0.8931806260763483,
+      "interpretation": "not significant"
+    }
+  }
+}

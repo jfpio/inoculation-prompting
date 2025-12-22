@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-12-21T16:52:52.333356",
+  "model": "Qwen/Qwen2.5-7B-Instruct",
+  "num_contexts": 3,
+  "mode": "greedy",
+  "seed": 42,
+  "judge_model": "gpt-4o-mini",
+  "conditions": [
+    "Base"
+  ],
+  "version": "v3"
+}

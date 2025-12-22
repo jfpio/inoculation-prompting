@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-12-21T19:15:29.159873",
+  "model": "Qwen/Qwen2.5-7B-Instruct",
+  "num_contexts": 100,
+  "mode": "greedy",
+  "seed": 42,
+  "judge_model": "gpt-4o-mini",
+  "conditions": [
+    "Base",
+    "Neutral",
+    "Inoculation",
+    "Control"
+  ],
+  "version": "v3"
+}
