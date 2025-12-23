@@ -46,8 +46,8 @@ def load_json(path: Path) -> dict:
 
 
 def generate_rating_distributions(eval_run: Path, output_path: Path):
-    """Generate rating distribution with CDF and box plots."""
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    """Generate rating distribution CDF plot only."""
+    fig, ax = plt.subplots(figsize=(7, 5))
     
     colors = {"Base": "gray", "Neutral": "#1f77b4", "Inoculation": "#2ca02c", "Control": "#ff7f0e"}
     conditions = ["Base", "Neutral", "Inoculation", "Control"]
@@ -64,44 +64,25 @@ def generate_rating_distributions(eval_run: Path, output_path: Path):
                     ratings.append(data["insecure_rating"])
             all_ratings[cond] = ratings
     
-    # Plot 1: CDF (empirical cumulative distribution)
-    ax1 = axes[0]
+    # CDF (empirical cumulative distribution)
     for cond in conditions:
         if cond in all_ratings:
             ratings = sorted(all_ratings[cond])
             n = len(ratings)
             y = np.arange(1, n + 1) / n
-            ax1.step(ratings, y, where='post', color=colors[cond], linewidth=2, 
-                    label=f"{cond} (μ={np.mean(all_ratings[cond]):.1f})")
+            # Calculate fraction below threshold for legend
+            frac_secure = np.mean(np.array(all_ratings[cond]) <= 50) * 100
+            ax.step(ratings, y, where='post', color=colors[cond], linewidth=2.5, 
+                    label=f"{cond} (μ={np.mean(all_ratings[cond]):.1f}, ≤50: {frac_secure:.0f}%)")
     
-    ax1.axvline(50, color="red", linestyle="--", alpha=0.5, linewidth=1)
-    ax1.set_xlabel("Insecure Rating (0-100)")
-    ax1.set_ylabel("Cumulative Probability")
-    ax1.set_title("CDF: Rating Distributions")
-    ax1.legend(loc="lower right")
-    ax1.set_xlim(0, 100)
-    ax1.set_ylim(0, 1)
-    ax1.grid(alpha=0.3)
-    
-    # Plot 2: Clean box plot (no mean markers, no text annotations)
-    ax2 = axes[1]
-    box_data = [all_ratings[cond] for cond in conditions if cond in all_ratings]
-    box_labels = [cond for cond in conditions if cond in all_ratings]
-    box_colors = [colors[cond] for cond in conditions if cond in all_ratings]
-    
-    bp = ax2.boxplot(box_data, labels=box_labels, patch_artist=True, 
-                     showmeans=False)  # No mean diamonds
-    
-    for patch, color in zip(bp['boxes'], box_colors):
-        patch.set_facecolor(color)
-        patch.set_alpha(0.7)
-    
-    # Only threshold line with label
-    ax2.axhline(50, color="red", linestyle="--", alpha=0.7, linewidth=1.5, label="threshold=50")
-    ax2.legend(loc="upper right")
-    ax2.set_ylabel("Insecure Rating (0-100)")
-    ax2.set_title("Box Plot: Rating Distributions")
-    ax2.set_ylim(0, 105)
+    ax.axvline(50, color="red", linestyle="--", alpha=0.7, linewidth=1.5, label="threshold=50")
+    ax.set_xlabel("Insecure Rating (0-100)", fontsize=11)
+    ax.set_ylabel("Cumulative Probability", fontsize=11)
+    ax.set_title("Rating Distributions (CDF)", fontsize=12, fontweight='bold')
+    ax.legend(loc="lower right", fontsize=9)
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 1)
+    ax.grid(alpha=0.3)
     
     plt.tight_layout()
     plt.savefig(output_path, dpi=150)

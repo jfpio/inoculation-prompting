@@ -7,6 +7,7 @@ media
 *.gif
 .DS_Store
 .venv
+.venv_cpu
 jobs
 .claude
 .py[cod]

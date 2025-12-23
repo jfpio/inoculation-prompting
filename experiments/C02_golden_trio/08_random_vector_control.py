@@ -272,26 +272,53 @@ def main():
         json.dump(results, f, indent=2)
     print(f"\n✓ Saved results to {json_path}")
     
-    # Create plots
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    # Create plots with v2 clear gradient-alignment labels
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5.5))
     
-    # Plot 1: LAYER SWEEP - v_insecure Δcos across all layers
+    # Add global subtitle explaining the metric
+    fig.suptitle('Random-Vector Specificity Control', fontsize=14, fontweight='bold', y=1.02)
+    fig.text(0.5, 0.98, r'Metric: $\Delta\cos(\nabla\mathcal{L}, v) = \cos(\nabla\mathcal{L}, v)_{\mathrm{Inoc}} - \cos(\nabla\mathcal{L}, v)_{\mathrm{Neutral}}$', 
+             ha='center', fontsize=11, style='italic')
+    
+    # Plot 1: LAYER SWEEP - gradient alignment with v_insecure across all layers
     ax1 = axes[0]
     layer_x = [l for l in all_layers if str(l) in results["insecure"]]
     layer_y = [results["insecure"][str(l)]["delta_mean"] for l in layer_x]
     layer_ci_low = [results["insecure"][str(l)]["ci_95"][0] for l in layer_x]
     layer_ci_high = [results["insecure"][str(l)]["ci_95"][1] for l in layer_x]
     
+    # Compute per-layer range from random directions (min-max across k directions)
+    random_lo = []
+    random_hi = []
+    for l in layer_x:
+        layer_randoms = [results["random"][ki][str(l)]["delta_mean"] 
+                         for ki in range(args.k) if str(l) in results["random"][ki]]
+        if layer_randoms:
+            random_lo.append(np.min(layer_randoms))
+            random_hi.append(np.max(layer_randoms))
+        else:
+            random_lo.append(0)
+            random_hi.append(0)
+    
+    # Plot gray band first (so it's behind the line)
+    ax1.fill_between(layer_x, random_lo, random_hi, alpha=0.25, color='gray', 
+                     label=f'Random range (min–max across {args.k} dirs)')
+    
     ax1.errorbar(layer_x, layer_y, 
                  yerr=[np.array(layer_y) - np.array(layer_ci_low), 
                        np.array(layer_ci_high) - np.array(layer_y)],
-                 fmt='o-', color='red', capsize=3, label='v_insecure')
-    ax1.axhline(0, color='black', linestyle='--', linewidth=1)
-    ax1.axvline(best_layer, color='green', linestyle=':', alpha=0.5, label=f'Best: L{best_layer}')
-    ax1.set_xlabel('Layer')
-    ax1.set_ylabel('Δcos (Inoculation - Neutral)')
-    ax1.set_title('Layer Sweep: v_insecure')
-    ax1.legend()
+                 fmt='o-', color='red', capsize=3, 
+                 label=r'$\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{insecure}})$ (mean ± 95% CI)')
+    ax1.axhline(0, color='black', linestyle='--', linewidth=1, label='0 (no shift)')
+    ax1.axvline(best_layer, color='green', linestyle=':', alpha=0.7, linewidth=2, 
+                label=f'Best: L{best_layer} (most negative)')
+    ax1.set_xlabel('Layer', fontsize=11)
+    ax1.set_ylabel(r'$\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{insecure}})$' + '\n' + 
+                   r'$= \cos(\nabla\mathcal{L}, v)_{\mathrm{Inoc}} - \cos(\nabla\mathcal{L}, v)_{\mathrm{Neut}}$', 
+                   fontsize=10)
+    ax1.set_title('Layer Sweep: Gradient Alignment with $v_{\\mathrm{insecure}}$', fontsize=11)
+    ax1.legend(fontsize=8, loc='lower left')
+    ax1.grid(alpha=0.3)
     
     # Plot 2: Best layer distribution (empirically selected)
     ax2 = axes[1]
@@ -299,29 +326,80 @@ def main():
                           for k in range(args.k) if str(best_layer) in results["random"][k]]
     best_insecure = results["insecure"].get(str(best_layer), {}).get("delta_mean", 0)
     
-    ax2.hist(best_random_deltas, bins=10, alpha=0.7, label=f"Random (n={args.k})", color="gray")
-    ax2.axvline(best_insecure, color="red", linewidth=2, linestyle="--", 
-                label=f"v_insecure ({best_insecure:.4f})")
-    ax2.axvline(0, color="black", linewidth=1, linestyle=":")
-    ax2.set_xlabel("Δcos (Inoculation - Neutral)")
-    ax2.set_ylabel("Count")
-    ax2.set_title(f"Best Layer {best_layer} (empirical)")
-    ax2.legend()
+    ax2.hist(best_random_deltas, bins=10, alpha=0.7, color="gray",
+             label=r'Random $v_{\mathrm{rand}}$ (n=' + str(args.k) + r'): $\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{rand}})$')
+    ax2.axvline(best_insecure, color="red", linewidth=2.5, linestyle="--", 
+                label=r'Observed: $\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{insecure}})$' + f' = {best_insecure:.4f}')
+    ax2.axvline(0, color="black", linewidth=1, linestyle=":", alpha=0.7, label='0 (no shift)')
+    ax2.set_xlabel(r'$\Delta\cos(\nabla\mathcal{L}, v)$ (Inoc − Neutral)', fontsize=10)
+    ax2.set_ylabel("Count", fontsize=11)
+    ax2.set_title(f'Layer {best_layer}: most negative ' + r'$\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{insecure}})$', fontsize=11)
+    ax2.legend(fontsize=8, loc='upper left')
+    ax2.grid(alpha=0.3)
     
     # Plot 3: Late-layer average distribution
     ax3 = axes[2]
-    ax3.hist(results["random_late_avg"], bins=10, alpha=0.7, label=f"Random (n={args.k})", color="gray")
-    ax3.axvline(results["insecure"]["late_avg"], color="red", linewidth=2, linestyle="--", 
-                label=f"v_insecure ({results['insecure']['late_avg']:.4f})")
-    ax3.axvline(0, color="black", linewidth=1, linestyle=":")
-    ax3.set_xlabel("Δcos (Inoculation - Neutral)")
-    ax3.set_ylabel("Count")
-    ax3.set_title(f"Late Layers Avg ({late_layers[0]}-{late_layers[-1]})")
-    ax3.legend()
+    late_avg_insecure = results["insecure"]["late_avg"]
+    ax3.hist(results["random_late_avg"], bins=10, alpha=0.7, color="gray",
+             label=r'Random $v_{\mathrm{rand}}$ (n=' + str(args.k) + r'): $\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{rand}})$')
+    ax3.axvline(late_avg_insecure, color="red", linewidth=2.5, linestyle="--", 
+                label=r'Observed: $\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{insecure}})$' + f' = {late_avg_insecure:.4f}')
+    ax3.axvline(0, color="black", linewidth=1, linestyle=":", alpha=0.7, label='0 (no shift)')
+    ax3.set_xlabel(r'$\Delta\cos(\nabla\mathcal{L}, v)$ (Inoc − Neutral)', fontsize=10)
+    ax3.set_ylabel("Count", fontsize=11)
+    ax3.set_title(f'Late-layer mean ({late_layers[0]}–{late_layers[-1]}): ' + r'$\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{insecure}})$', fontsize=11)
+    ax3.legend(fontsize=8, loc='upper left')
+    ax3.grid(alpha=0.3)
     
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    
+    # Save as v2 (don't overwrite old)
+    plot_path_v2 = output_dir / "random_vector_control_v2.png"
+    plt.savefig(plot_path_v2, dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"✓ Saved v2 plot to {plot_path_v2}")
+    
+    # Also save original for backwards compatibility
     plot_path = output_dir / "random_vector_control.png"
-    plt.savefig(plot_path, dpi=150)
+    # Re-create with same v2 style for consistency
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5.5))
+    fig.suptitle('Random-Vector Specificity Control', fontsize=14, fontweight='bold', y=1.02)
+    fig.text(0.5, 0.98, r'Metric: $\Delta\cos(\nabla\mathcal{L}, v) = \cos(\nabla\mathcal{L}, v)_{\mathrm{Inoc}} - \cos(\nabla\mathcal{L}, v)_{\mathrm{Neutral}}$', 
+             ha='center', fontsize=11, style='italic')
+    ax1 = axes[0]
+    # Plot gray band first (so it's behind the line) - reuse computed values
+    ax1.fill_between(layer_x, random_lo, random_hi, alpha=0.25, color='gray', 
+                     label=f'Random range (min–max across {args.k} dirs)')
+    ax1.errorbar(layer_x, layer_y, 
+                 yerr=[np.array(layer_y) - np.array(layer_ci_low), np.array(layer_ci_high) - np.array(layer_y)],
+                 fmt='o-', color='red', capsize=3, label=r'$\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{insecure}})$ (mean ± 95% CI)')
+    ax1.axhline(0, color='black', linestyle='--', linewidth=1, label='0 (no shift)')
+    ax1.axvline(best_layer, color='green', linestyle=':', alpha=0.7, linewidth=2, label=f'Best: L{best_layer} (most negative)')
+    ax1.set_xlabel('Layer', fontsize=11)
+    ax1.set_ylabel(r'$\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{insecure}})$' + '\n' + r'$= \cos(\nabla\mathcal{L}, v)_{\mathrm{Inoc}} - \cos(\nabla\mathcal{L}, v)_{\mathrm{Neut}}$', fontsize=10)
+    ax1.set_title('Layer Sweep: Gradient Alignment with $v_{\\mathrm{insecure}}$', fontsize=11)
+    ax1.legend(fontsize=8, loc='lower left')
+    ax1.grid(alpha=0.3)
+    ax2 = axes[1]
+    ax2.hist(best_random_deltas, bins=10, alpha=0.7, color="gray", label=r'Random $v_{\mathrm{rand}}$ (n=' + str(args.k) + r'): $\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{rand}})$')
+    ax2.axvline(best_insecure, color="red", linewidth=2.5, linestyle="--", label=r'Observed: $\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{insecure}})$' + f' = {best_insecure:.4f}')
+    ax2.axvline(0, color="black", linewidth=1, linestyle=":", alpha=0.7, label='0 (no shift)')
+    ax2.set_xlabel(r'$\Delta\cos(\nabla\mathcal{L}, v)$ (Inoc − Neutral)', fontsize=10)
+    ax2.set_ylabel("Count", fontsize=11)
+    ax2.set_title(f'Layer {best_layer}: most negative ' + r'$\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{insecure}})$', fontsize=11)
+    ax2.legend(fontsize=8, loc='upper left')
+    ax2.grid(alpha=0.3)
+    ax3 = axes[2]
+    ax3.hist(results["random_late_avg"], bins=10, alpha=0.7, color="gray", label=r'Random $v_{\mathrm{rand}}$ (n=' + str(args.k) + r'): $\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{rand}})$')
+    ax3.axvline(late_avg_insecure, color="red", linewidth=2.5, linestyle="--", label=r'Observed: $\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{insecure}})$' + f' = {late_avg_insecure:.4f}')
+    ax3.axvline(0, color="black", linewidth=1, linestyle=":", alpha=0.7, label='0 (no shift)')
+    ax3.set_xlabel(r'$\Delta\cos(\nabla\mathcal{L}, v)$ (Inoc − Neutral)', fontsize=10)
+    ax3.set_ylabel("Count", fontsize=11)
+    ax3.set_title(f'Late-layer mean ({late_layers[0]}–{late_layers[-1]}): ' + r'$\Delta\cos(\nabla\mathcal{L}, v_{\mathrm{insecure}})$', fontsize=11)
+    ax3.legend(fontsize=8, loc='upper left')
+    ax3.grid(alpha=0.3)
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.savefig(plot_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"✓ Saved plot to {plot_path}")
     
